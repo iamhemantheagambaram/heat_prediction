@@ -7,9 +7,6 @@ import pandas as pd
 # Create Flask app
 app = Flask(__name__)
 
-# Load trained model
-model = pickle.load(open("models/heat_model.pkl", "rb"))
-
 # Heat risk labels
 labels = {
     0: "Low",
@@ -33,7 +30,7 @@ heat_advice = {
     },
 
     "High": {
-        "clothing": "Wear sunscreen, cap, and breathable cotton clothes.",
+        "clothing👚": "Wear sunscreen, cap, and breathable cotton clothes.",
         "outdoor_advice": "Avoid going outside between 11 AM and 4 PM.",
         "hydration": "Drink water every 20–30 minutes."
     }
