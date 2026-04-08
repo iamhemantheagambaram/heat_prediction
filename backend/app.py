@@ -9,29 +9,25 @@ from model_loader import model
 from api import climate_solutions, heat_advice
 
 app = Flask(__name__)
-CORS(app)  # ✅ Allow frontend requests
+CORS(app)
 
-
-# 🔹 Heat labels (ML output → readable)
 labels = {
     0: "Low",
     1: "Medium",
     2: "High"
 }
 
-# 🏠 HOME ROUTE
 @app.route("/")
 def home():
     return "Backend Running Successfully"
 
 
-# 🔥 MAIN API (Frontend → Backend → Weather → ML → Response)
+# 🔥 SINGLE LOCATION (NO CHANGE)
 @app.route("/api/live", methods=["POST"])
 def predict_heat():
 
     try:
         data = request.get_json()
-        print("📍 Received request:", data)
 
         lat = data.get("lat")
         lon = data.get("lon")
@@ -39,14 +35,8 @@ def predict_heat():
         if lat is None or lon is None:
             return jsonify({"error": "lat and lon required"}), 400
 
-        print(f"📍 Location: lat={lat}, lon={lon}")
-
-        # 🌦️ Step 1: Get real-time weather
         temp, humidity, pressure, wind = get_weather(lat, lon)
 
-        print(f"🌡 Weather → Temp: {temp}, Humidity: {humidity}, Wind: {wind}")
-
-        # 🔧 Step 2: Prepare ML input
         temp_max = temp + 1
         temp_min = temp - 1
         precip = 0
@@ -58,25 +48,15 @@ def predict_heat():
             "wind_speed_10m_max"
         ])
 
-        print("📊 Model input:", sample)
-
-        # 🔮 Step 3: ML Prediction
         prediction = model.predict(sample)[0]
         heat_risk = labels.get(prediction, "Unknown")
 
-        print("🔥 Prediction:", heat_risk)
-
-# 🌡 Step 4: Climate-based logic
         avg_temp = (temp_max + temp_min) / 2
 
-# ✅ GET recommendation from api.py (IMPORTANT)
         recommendation = heat_advice.get(heat_risk, {})
-
-# Optional: climate info
         climate, climate_advice = climate_solutions(avg_temp)
 
-        # 📤 Final response
-        response = {
+        return jsonify({
             "temp": temp,
             "humidity": humidity,
             "wind": wind,
@@ -84,31 +64,62 @@ def predict_heat():
             "recommendation": recommendation,
             "climate_type": climate,
             "climate_solutions": climate_advice
-        }
-
-        print("✅ Sending response:", response)
-
-        return jsonify(response)
+        })
 
     except Exception as e:
-        print("❌ ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
 
 
-# 🗺️ HEATMAP API (dummy for now)
-@app.route("/api/heatmap/<city>")
-def heatmap(city):
+# 🔥 NEW: GRID HEATMAP API
+@app.route("/predict-all", methods=["GET"])
+def predict_all():
 
-    data = [
-        {"lat": 13.085, "lon": 80.210, "risk": "High"},
-        {"lat": 13.041, "lon": 80.234, "risk": "Medium"},
-        {"lat": 12.981, "lon": 80.220, "risk": "Low"}
-    ]
+    try:
+        grid_data = []
 
-    return jsonify(data)
+        base_lat = 13.0827
+        base_lon = 80.2707
+
+        # 🔥 ONLY ONE WEATHER CALL (IMPORTANT)
+        temp, humidity, pressure, wind = get_weather(base_lat, base_lon)
+
+        for i in range(-10, 10):
+            for j in range(-10, 10):
+
+                lat = base_lat + (i * 0.01)
+                lon = base_lon + (j * 0.01)
+
+                temp_max = temp + 1
+                temp_min = temp - 1
+                precip = 0
+
+                sample = pd.DataFrame([[temp_max, temp_min, precip, wind]], columns=[
+                    "temperature_2m_max",
+                    "temperature_2m_min",
+                    "precipitation_sum",
+                    "wind_speed_10m_max"
+                ])
+
+                prediction = model.predict(sample)[0]
+                heat_risk = labels.get(prediction, "Unknown")
+
+                # 🔥 convert to intensity
+                intensity = 1 if heat_risk == "Low" else 2 if heat_risk == "Medium" else 3
+
+                grid_data.append({
+                    "lat": lat,
+                    "lon": lon,
+                    "intensity": intensity
+                })
+
+        return jsonify(grid_data)
+
+    except Exception as e:
+        print("❌ GRID ERROR:", str(e))
+        return jsonify({"error": str(e)}), 500
 
 
-# 💬 CHATBOT API
+# 💬 CHATBOT (NO CHANGE)
 @app.route("/api/chat", methods=["POST"])
 def chat():
 
@@ -123,6 +134,5 @@ def chat():
     return jsonify({"reply": "Ask about heat, safety, or climate."})
 
 
-# ▶️ RUN SERVER
 if __name__ == "__main__":
     app.run(debug=True)
