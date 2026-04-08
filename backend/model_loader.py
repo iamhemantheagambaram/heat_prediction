@@ -3,9 +3,7 @@ import pickle
 
 def load_model():
     try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        base_dir = os.path.dirname(current_dir)
-
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         model_path = os.path.join(base_dir, "models", "heat_model.pkl")
 
         print("Loading model from:", model_path)
@@ -13,13 +11,13 @@ def load_model():
         with open(model_path, "rb") as f:
             model = pickle.load(f)
 
-        print("✅ Model loaded successfully")
-        print("Model expects features:", model.n_features_in_)
+        print("Model loaded")
+        print("Features expected:", model.n_features_in_)
 
         return model
 
     except Exception as e:
-        print("❌ Model loading failed:", e)
+        print("Model load error:", e)
         return None
 
 model = load_model()

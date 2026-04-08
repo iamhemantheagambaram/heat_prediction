@@ -7,7 +7,7 @@ def get_weather(lat, lon):
         url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric"
         res = requests.get(url).json()
 
-        print("Weather API Response:", res)
+        print("Weather API:", res)
 
         if res.get("cod") != 200:
             return 30, 60, 1010, 2  # fallback
@@ -20,5 +20,5 @@ def get_weather(lat, lon):
         return temp, humidity, pressure, wind
 
     except Exception as e:
-        print("Weather API Error:", e)
+        print("Weather error:", e)
         return 30, 60, 1010, 2
