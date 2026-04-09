@@ -7,6 +7,7 @@ from weather import get_weather
 from model_loader import model
 from api import climate_solutions, heat_advice
 from chat_model import ChatModel
+
 chatbot = ChatModel()
 
 app = Flask(__name__) 
@@ -71,7 +72,7 @@ def predict_heat():
         return jsonify({"error": str(e)}), 500
 
 
-# 🔥 NEW: GRID HEATMAP API
+# 🔥 GRID HEATMAP API
 @app.route("/predict-all", methods=["GET"])
 def predict_all():
 
@@ -81,7 +82,6 @@ def predict_all():
         base_lat = 13.0827
         base_lon = 80.2707
 
-        # 🔥 ONLY ONE WEATHER CALL (IMPORTANT)
         temp, humidity, pressure, wind = get_weather(base_lat, base_lon)
 
         for i in range(-10, 10):
@@ -104,7 +104,6 @@ def predict_all():
                 prediction = model.predict(sample)[0]
                 heat_risk = labels.get(prediction, "Unknown")
 
-                # 🔥 convert to intensity
                 intensity = 1 if heat_risk == "Low" else 2 if heat_risk == "Medium" else 3
 
                 grid_data.append({
@@ -120,6 +119,7 @@ def predict_all():
         return jsonify({"error": str(e)}), 500
 
 
+# 🔥 AI CHATBOT API
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
@@ -127,26 +127,21 @@ def chat():
 
         msg = data.get("message", "").strip()
 
-        # 🔥 dynamic location (NO HARDCODE ISSUE)
         lat = data.get("lat")
         lon = data.get("lon")
 
-        # fallback only if missing
         if lat is None or lon is None:
             lat = 13.0827
             lon = 80.2707
 
-        # 🧠 ML intent
         tag = chatbot.predict(msg)
         base_response = chatbot.get_response(tag)
 
-        # 🌦 weather (safe call)
         try:
             temp, humidity, pressure, wind = get_weather(lat, lon)
         except:
             temp, humidity = None, None
 
-        # 🧠 build response
         final_response = base_response
 
         if temp is not None:
@@ -160,7 +155,6 @@ def chat():
             elif temp > 30:
                 final_response += "\n🌤 Warm weather — drink water regularly."
 
-        # 🌆 UHI context (important for marks)
         final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to Urban Heat Island effect."
 
         return jsonify({
@@ -175,5 +169,54 @@ def chat():
             "reply": "System working, but chatbot had an issue.",
             "error": str(e)
         })
+
+
+# 🔥 NEW: 5 DAY HEAT TREND API (ONLY FIXED POSITION)
+@app.route("/api/heat-trend", methods=["POST"])
+def heat_trend():
+
+    try:
+
+        data = request.get_json()
+
+        lat = data.get("lat")
+        lon = data.get("lon")
+
+        if lat is None or lon is None:
+            return jsonify({"error": "lat and lon required"}), 400
+
+        trend_data = []
+
+        temp, humidity, pressure, wind = get_weather(lat, lon)
+
+        for day in range(1, 6):
+
+            temp_future = temp + (day * 0.8)
+            temp_max = temp_future + 1
+            temp_min = temp_future - 1
+            precip = 0
+
+            sample = pd.DataFrame([[temp_max, temp_min, precip, wind]], columns=[
+                "temperature_2m_max",
+                "temperature_2m_min",
+                "precipitation_sum",
+                "wind_speed_10m_max"
+            ])
+
+            prediction = model.predict(sample)[0]
+            heat_risk = labels.get(prediction, "Unknown")
+
+            trend_data.append({
+                "day": f"Day {day}",
+                "temperature": round(temp_future, 2),
+                "risk": heat_risk
+            })
+
+        return jsonify(trend_data)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True)

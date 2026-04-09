@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import UHIChatbot from "./UHIChatbot";
 import MapComponent from "./MapComponent";
+import ClimateTrend from "./ClimateTrend";
 
 function Dashboard() {
   const [data, setData] = useState(null);
@@ -96,6 +97,11 @@ function Dashboard() {
             <h3>{tempIcon} Temp</h3>
             <p>{data?.temp ?? "--"}°C</p>
           </div>
+          <div className="card" style={{ marginTop: "20px" }}></div>
+          <ClimateTrend
+            lat={selectedLocation?.lat || location?.lat}
+            lon={selectedLocation?.lon || location?.lon}
+          />
 
           <div className="card">
             <h3>💧 Humidity</h3>
