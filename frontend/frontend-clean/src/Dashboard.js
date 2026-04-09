@@ -1,160 +1,238 @@
 import { useState, useEffect } from "react";
-import WeatherCards from "./WeatherCards";
 import Chatbot from "./Chatbot";
 
 function Dashboard() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showHeatMapPopup, setShowHeatMapPopup] = useState(false);
+  const [showChatbotPopup, setShowChatbotPopup] = useState(false);
+  const [location, setLocation] = useState(null);
 
-  // 📍 Get user location
   const getUserLocation = () => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject("Geolocation not supported");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        console.log("📍 Location fetched:", position.coords);
-
-        resolve({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude
-        });
-      },
-      (error) => {
-        console.error("❌ Location error:", error);
-        reject(error.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject("Geolocation not supported");
+        return;
       }
-    );
-  });
-};
-
-const fetchPrediction = async () => {
-  try {
-    console.log("🚀 Fetch started");
-
-    const location = await getUserLocation();
-    console.log("📍 Sending location:", location);
-
-    const response = await fetch("http://127.0.0.1:5000/api/live", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(location)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            lat: position.coords.latitude.toFixed(4),
+            lon: position.coords.longitude.toFixed(4),
+          });
+        },
+        (error) => reject(error.message),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
     });
+  };
 
-    console.log("📡 Response status:", response.status);
+  const fetchPrediction = async () => {
+    try {
+      const loc = await getUserLocation();
+      const response = await fetch("http://127.0.0.1:5000/api/live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loc),
+      });
 
-    const result = await response.json();
-    console.log("✅ Backend Response:", result);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Backend error");
 
-    if (!response.ok) {
-      throw new Error(result.error || "Backend error");
+      setData({
+        temp: result.temp,
+        humidity: result.humidity,
+        wind: result.wind,
+        risk: result.risk,
+        recommendation: result.recommendation,
+        weather: result.weather,
+      });
+
+      setLocation(loc);
+    } catch (err) {
+      setError(err.message);
     }
+  };
 
-    setData({
-      temp: result.temp,
-      humidity: result.humidity,
-      wind: result.wind,
-      risk: result.risk,
-      recommendation: result.recommendation
-    });
-
-    setLoading(false);
-
-  } catch (err) {
-    console.error("🔥 ERROR:", err);
-    setError(err.message);
-    setLoading(false);
-  }
-};
-
-  // 🚀 Run on page load
   useEffect(() => {
     fetchPrediction();
   }, []);
 
+  let tempIcon = "🟢";
+  if (data?.temp > 38) tempIcon = "🔴";
+  else if (data?.temp > 30) tempIcon = "🟠";
+
+  let humidityColor = "green";
+  if (data?.humidity > 75) humidityColor = "blue";
+  else if (data?.humidity > 50) humidityColor = "orange";
+
+  let windColor = "green";
+  if (data?.wind > 25) windColor = "red";
+  else if (data?.wind > 10) windColor = "orange";
+
+  const weatherIcon = (type) => {
+    switch (type) {
+      case "sunny": return "🌞";
+      case "cloudy": return "☁️";
+      case "rain": return "🌧️";
+      case "thunder": return "⚡";
+      default: return "❓";
+    }
+  };
+
   return (
-    <div style={{ display: "flex", width: "100%" }}>
-      
-      {/* LEFT SIDE */}
-      <div className="dashboard">
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        width: "100%",
+        background: "#1e3a8a",
+        minHeight: "100vh",
+        padding: "20px 10px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          maxWidth: "1400px",
+          width: "100%",
+          gap: "20px",
+        }}
+      >
+        {/* Main Dashboard */}
+        <div style={{ flex: 3 }}>
+          {location && (
+            <p style={{ color: "#d1d5db", fontSize: "16px" }}>
+              📍 Current Location: Lat {location.lat}, Lon {location.lon}
+            </p>
+          )}
 
-        {/* Weather Cards */}
-        <WeatherCards data={data} />
+          {/* Four attribute cards */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: "15px",
+              marginTop: "25px",
+            }}
+          >
+            {[{
+              title: `${tempIcon} Temp`,
+              value: data?.temp ? `${data.temp}°C` : "--",
+              color: tempIcon === "🔴" ? "red" : tempIcon === "🟠" ? "orange" : "green"
+            },
+            {
+              title: "💦 Humidity",
+              value: data?.humidity ? `${data.humidity}%` : "--",
+              color: humidityColor
+            },
+            {
+              title: "🌀 Wind",
+              value: data?.wind ? `${data.wind} km/h` : "--",
+              color: windColor
+            },
+            {
+              title: `${weatherIcon(data?.weather)} Weather`,
+              value: data?.weather ? data.weather.charAt(0).toUpperCase() + data.weather.slice(1) : "--",
+              color: "#d1d5db"
+            }].map((item, index) => (
+              <div key={index} style={{
+                flex: 1,
+                textAlign: "center",
+                padding: "25px",
+                background: "#3b82f6",
+                borderRadius: "14px",
+                minWidth: "0",
+              }}>
+                <h3 style={{ margin: "5px 0", fontSize: "22px" }}>{item.title}</h3>
+                <p style={{ fontWeight: "bold", fontSize: "28px", color: item.color, margin: "5px 0" }}>{item.value}</p>
+              </div>
+            ))}
+          </div>
 
-        {/* Areas */}
-        <div className="card">
-          <h3>Areas in Chennai</h3>
-          <p>📍 Anna Nagar</p>
-          <p>📍 T Nagar</p>
-          <p>📍 Velachery</p>
-          <p>📍 Adyar</p>
+          {/* Recommendations */}
+          <div style={{
+            marginTop: "25px",
+            padding: "20px",
+            background: "#3b82f6",
+            borderRadius: "14px"
+          }}>
+            <h3 style={{ fontSize: "20px" }}>💡 Recommendations</h3>
+            <p style={{ color: "#d1d5db", fontSize: "17px", lineHeight: "1.6" }}>
+              {data?.recommendation
+                ? data.recommendation
+                : "Recommendations will be displayed here based on heat risk, weather conditions, and city insights."}
+            </p>
+          </div>
+
+          {/* Climate Trend */}
+          <div style={{
+            marginTop: "25px",
+            padding: "20px",
+            background: "#3b82f6",
+            borderRadius: "14px"
+          }}>
+            <h3 style={{ fontSize: "20px" }}>📈 Climate Trend (Next 7 Days)</h3>
+            <p style={{ color: "#d1d5db", fontSize: "17px" }}>Graph will be displayed after data integration</p>
+          </div>
         </div>
 
-        {/* Heat Map */}
-        <div className="card" style={{ marginTop: "20px" }}>
-          <h3>Chennai - Heat Zones</h3>
-          <p style={{ color: "#aaa" }}>
-            Map will be displayed after backend integration
-          </p>
-        </div>
+        {/* Right Panel */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "25px" }}>
+          <div
+            style={{
+              padding: "20px",
+              background: "#3b82f6",
+              borderRadius: "14px",
+              cursor: "pointer"
+            }}
+            onClick={() => setShowHeatMapPopup(true)}
+          >
+            <h3 style={{ fontSize: "20px" }}>🗺 Heat Map</h3>
+            <p style={{ color: "#d1d5db", fontSize: "16px" }}>
+              Heat map details will be displayed here after backend integration.
+            </p>
+          </div>
 
-        {/* Climate Graph */}
-        <div className="card" style={{ marginTop: "20px" }}>
-          <h3>Climate Trend (Next 7 Days)</h3>
-          <p style={{ color: "#aaa" }}>
-            Graph will be displayed after data integration
-          </p>
+          <div
+            style={{
+              padding: "20px",
+              background: "#3b82f6",
+              borderRadius: "14px",
+              cursor: "pointer"
+            }}
+            onClick={() => setShowChatbotPopup(true)}
+          >
+            <h3 style={{ fontSize: "20px" }}>🤖 AI Chatbot</h3>
+            <p style={{ color: "#d1d5db", fontSize: "16px" }}>Click to open the chatbot assistant.</p>
+          </div>
         </div>
-
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="right-panel">
-
-        {/* Area Dashboard */}
-        <div className="card">
-          <h3>Area Dashboard</h3>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : error ? (
-            <p style={{ color: "red" }}>{error}</p>
-          ) : (
-            <>
-              <p>Heat Risk: {data?.risk}</p>
-            </>
-          )}
+      {/* Popups */}
+      {showHeatMapPopup && (
+        <div className="popup-overlay">
+          <div className="popup-box-blue">
+            <button className="close-btn" onClick={() => setShowHeatMapPopup(false)}>×</button>
+            <h2>Heat Map Details</h2>
+            <p style={{ color: "#fff", marginTop: "20px" }}>
+              Heat map content from backend will appear here.
+            </p>
+          </div>
         </div>
+      )}
 
-        {/* Solutions */}
-        <div className="card" style={{ marginTop: "15px" }}>
-          <h3>Solutions</h3>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : (
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(data?.recommendation, null, 2)}
-            </pre>
-          )}
+      {showChatbotPopup && (
+        <div className="popup-overlay">
+          <div className="chatbot-popup-center">
+            <button className="close-btn" onClick={() => setShowChatbotPopup(false)}>×</button>
+            <div style={{ marginTop: "20px" }}>
+              <Chatbot showHeader={false} showSendButton={true} />
+            </div>
+          </div>
         </div>
-
-        {/* Chatbot */}
-        <Chatbot />
-
-      </div>
-
+      )}
     </div>
   );
 }

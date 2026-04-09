@@ -1,15 +1,8 @@
+import React from "react";
+import "./App.css";
+
 function Sidebar() {
-  return (
-    <div className="sidebar">
-      <p>🏠 Dashboard</p>
-      <p>🗺 Heat Map</p>
-      <p>🏙 Cities</p>
-      <p>📊 Predictions</p>
-      <p>🌱 Solutions</p>
-      <p>📄 Reports</p>
-      <p>🤖 Chatbot</p>
-    </div>
-  );
+  return <div className="sidebar"></div>;
 }
 
 export default Sidebar;
