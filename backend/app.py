@@ -7,6 +7,8 @@ from weather import get_weather
 from model_loader import model
 from api import climate_solutions, heat_advice
 from chat_model import ChatModel
+from chat_local import get_response
+import re
 chatbot = ChatModel()
 
 app = Flask(__name__) 
@@ -125,43 +127,77 @@ def chat():
     try:
         data = request.get_json()
 
-        msg = data.get("message", "").strip()
+        msg = data.get("message", "").lower().strip()
 
-        # 🔥 dynamic location (NO HARDCODE ISSUE)
+        # 🔥 dynamic location
         lat = data.get("lat")
         lon = data.get("lon")
 
-        # fallback only if missing
         if lat is None or lon is None:
             lat = 13.0827
             lon = 80.2707
 
-        # 🧠 ML intent
+        # 🧠 intent detection (ML)
         tag = chatbot.predict(msg)
         base_response = chatbot.get_response(tag)
 
-        # 🌦 weather (safe call)
+        # 🌦 weather
         try:
             temp, humidity, pressure, wind = get_weather(lat, lon)
         except:
             temp, humidity = None, None
 
-        # 🧠 build response
-        final_response = base_response
+        # 🧠 FINAL RESPONSE (STRICT LOGIC)
+        final_response = ""
 
-        if temp is not None:
-            final_response += f"\n\n🌡 Temperature: {temp}°C"
-            final_response += f"\n💧 Humidity: {humidity}%"
+        # 🔥 TEMPERATURE (ONLY WHEN ASKED)
+        if tag == "temperature":
+            if temp is not None:
+                final_response = f"The current temperature is {temp}°C."
+            else:
+                final_response = "Unable to fetch temperature."
 
-            if temp > 40:
-                final_response += "\n🚨 Extreme heat — avoid going outside."
-            elif temp > 35:
-                final_response += "\n⚠️ High heat — stay hydrated."
-            elif temp > 30:
-                final_response += "\n🌤 Warm weather — drink water regularly."
+        # 🔥 CLOTHING
+        elif tag == "clothing":
+            if temp is not None:
+                if temp >= 38:
+                    final_response = "It's very hot. Wear light cotton clothes and avoid dark colors."
+                elif temp >= 32:
+                    final_response = "Wear breathable and light clothing. Stay hydrated."
+                else:
+                    final_response = "Weather is comfortable. Normal clothing is fine."
+            else:
+                final_response = base_response
 
-        # 🌆 UHI context (important for marks)
-        final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to Urban Heat Island effect."
+        # 🔥 SAFETY
+        elif tag == "safety":
+            if temp is not None:
+                if temp >= 38:
+                    final_response = "Extreme heat. Avoid going outside during peak hours."
+                elif temp >= 32:
+                    final_response = "Moderate heat. Limit outdoor exposure."
+                else:
+                    final_response = "Weather is safe for outdoor activities."
+            else:
+                final_response = base_response
+
+        # 🔥 HEALTH
+        elif tag == "health":
+            if temp is not None:
+                if temp >= 38:
+                    final_response = "High risk of heatstroke. Stay hydrated and indoors."
+                else:
+                    final_response = "Stay hydrated and avoid long sun exposure."
+            else:
+                final_response = base_response
+
+        # 🔥 GENERAL / FALLBACK
+        else:
+            final_response = base_response
+
+        # 🔥 OPTIONAL: UHI context (ONLY for general queries)
+        if tag == "general":
+            final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to the Urban Heat Island effect."
 
         return jsonify({
             "reply": final_response,
