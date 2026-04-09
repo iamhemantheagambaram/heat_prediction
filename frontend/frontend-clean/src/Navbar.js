@@ -1,8 +1,12 @@
 function Navbar({ location }) {
   return (
     <div className="navbar">
-      <h2>🌡 AI-Based Urban Heat Prediction and Cooling Recommendations</h2>
-      <p>📍 {location ? location : "Fetching location..."}</p>
+      <h2>🌡 AI-BASED URBAN HEAT PREDICTION AND COOLING RECOMMENDATIONS</h2>
+      
+      <p className="location-text">
+  <span>📍</span>
+  <span>Fetching location...</span>
+</p>
     </div>
   );
 }

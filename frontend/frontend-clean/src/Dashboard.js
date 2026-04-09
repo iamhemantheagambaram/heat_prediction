@@ -1,180 +1,165 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import UHIChatbot from "./UHIChatbot";
 import MapComponent from "./MapComponent";
+import ClimateTrend from "./ClimateTrend";
 
 function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+=======
+import React, { useState } from "react";
+import { FaPaperPlane } from "react-icons/fa";
+import "./App.css";
+>>>>>>> 4fc7448 (frontend)
 
+const Dashboard = () => {
   const [showHeatMapPopup, setShowHeatMapPopup] = useState(false);
   const [showChatbotPopup, setShowChatbotPopup] = useState(false);
 
-  const [location, setLocation] = useState(null);
-
-  // ✅ dynamic location from map
-  const [selectedLocation, setSelectedLocation] = useState(null);
-
-  const getUserLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject("Geolocation not supported");
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-          });
-        },
-        (error) => reject(error.message),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    });
-  };
-
-  const fetchPrediction = async () => {
-    try {
-      const loc = await getUserLocation();
-
-      const response = await fetch("http://127.0.0.1:5000/api/live", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loc),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Backend error");
-
-      setData({
-        temp: result.temp,
-        humidity: result.humidity,
-        wind: result.wind,
-        risk: result.risk,
-        recommendation: result.recommendation, // 🔥 object
-        weather: result.weather,
-      });
-
-      setLocation(loc);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
-  useEffect(() => {
-    fetchPrediction();
-  }, []);
-
-  // UI helpers
-  let tempIcon = "🟢";
-  if (data?.temp > 38) tempIcon = "🔴";
-  else if (data?.temp > 30) tempIcon = "🟠";
-
-  const weatherIcon = (type) => {
-    switch (type) {
-      case "sunny": return "🌞";
-      case "cloudy": return "☁️";
-      case "rain": return "🌧️";
-      case "thunder": return "⚡";
-      default: return "❓";
-    }
-  };
-
   return (
-    <div style={{ display: "flex", width: "100%" }}>
-      
-      {/* LEFT SIDE */}
-      <div style={{ flex: 3 }}>
+    <div className="dashboard">
+      {/* Left Panel */}
+      <div className="left-panel">
+        <div className="flex-attributes">
+          <div className="attribute-card">
+            <h3>🌡Current Temperature</h3>
+            <p className="attribute-value temperature-value"></p>
+          </div>
+          <div className="card" style={{ marginTop: "20px" }}></div>
+          <ClimateTrend
+            lat={selectedLocation?.lat || location?.lat}
+            lon={selectedLocation?.lon || location?.lon}
+          />
 
-        {location && (
-          <p>📍 Lat {location.lat}, Lon {location.lon}</p>
-        )}
-
-        {/* Cards */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          <div className="card">
-            <h3>{tempIcon} Temp</h3>
-            <p>{data?.temp ?? "--"}°C</p>
+          <div className="attribute-card">
+            <h3>💧Humidity</h3>
+            <p className="attribute-value humidity-value"></p>
           </div>
 
-          <div className="card">
-            <h3>💧 Humidity</h3>
-            <p>{data?.humidity ?? "--"}%</p>
+          <div className="attribute-card">
+            <h3>🌬 Wind Speed</h3>
+            <p className="attribute-value wind-value"></p>
           </div>
 
-          <div className="card">
-            <h3>🌬 Wind</h3>
-            <p>{data?.wind ?? "--"} km/h</p>
-          </div>
-
-          <div className="card">
-            <h3>{weatherIcon(data?.weather)} Weather</h3>
-            <p>{data?.weather ?? "--"}</p>
+          <div className="attribute-card">
+            <h3>☁️Weather</h3>
+            <p className="attribute-value weather-value"></p>
           </div>
         </div>
 
-        {/* MAP */}
-        <div style={{ marginTop: "20px" }}>
-          <MapComponent setLocation={setSelectedLocation} />
+        <div className="card large-card">
+          <h3>💡Recommendations</h3>
+          <div className="recommendation-text">
+            Recommendations will appear after backend integration
+          </div>
         </div>
 
-        {/* 🔥 FIXED RECOMMENDATIONS */}
-        <div className="card" style={{ marginTop: "20px" }}>
-          <h3>💡 Recommendations</h3>
-
-          {data?.recommendation ? (
-            <div className="recommendation-text">
-              <p><b>👕 Clothing:</b> {data.recommendation.clothing}</p>
-              <p><b>💧 Hydration:</b> {data.recommendation.hydration}</p>
-              <p><b>🌤 Outdoor Advice:</b> {data.recommendation.outdoor_advice}</p>
-            </div>
-          ) : (
-            <p>Waiting...</p>
-          )}
+        <div className="card large-card">
+          <h3>📈Climate Trend (Next 7 Days)</h3>
+          <div className="recommendation-text">
+            Graph will be displayed after data integration
+          </div>
         </div>
-
       </div>
 
-      {/* RIGHT SIDE */}
+      {/* Right Panel */}
       <div className="right-panel">
-
-        <div className="card" onClick={() => setShowHeatMapPopup(true)}>
+        {/* Heat Map */}
+        <div
+          className="card side-card heatmap-card"
+          onClick={() => setShowHeatMapPopup(true)}
+        >
           <h3>🗺 Heat Map</h3>
+
+          <div className="small-map-preview">
+            <div className="small-map-placeholder">
+              Map Preview
+            </div>
+          </div>
         </div>
 
-        <div className="card" onClick={() => setShowChatbotPopup(true)}>
-          <h3>🤖 AI Chatbot</h3>
-        </div>
+        {/* Chatbot */}
+        <div
+          className="card side-card chatbot-card"
+          onClick={() => setShowChatbotPopup(true)}
+        >
+          <h3>🤖AI Chatbot</h3>
 
+          <div className="small-chatbot-preview">
+            <div className="small-chatbot-box">
+              Ask something...
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* HEATMAP POPUP */}
+      {/* Heat Map Popup */}
       {showHeatMapPopup && (
-        <div className="popup-overlay">
-          <div className="popup-box-blue">
-            <button className="close-btn" onClick={() => setShowHeatMapPopup(false)}>×</button>
+        <div
+          className="popup-overlay"
+          onClick={() => setShowHeatMapPopup(false)}
+        >
+          <div
+            className="heatmap-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close-btn"
+              onClick={() => setShowHeatMapPopup(false)}
+            >
+              ×
+            </button>
 
-            <MapComponent setLocation={setSelectedLocation} />
+            <h2>Heat Map</h2>
+
+            <div className="popup-map-area">
+              Large Map Will Appear Here
+            </div>
           </div>
         </div>
       )}
 
-      {/* CHATBOT POPUP */}
+      {/* Chatbot Popup */}
       {showChatbotPopup && (
-        <div className="popup-overlay">
-          <div className="chatbot-popup-center">
-            <button className="close-btn" onClick={() => setShowChatbotPopup(false)}>×</button>
+        <div
+          className="popup-overlay"
+          onClick={() => setShowChatbotPopup(false)}
+        >
+          <div
+            className="chatbot-popup"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="close-btn"
+              onClick={() => setShowChatbotPopup(false)}
+            >
+              ×
+            </button>
 
-            <UHIChatbot
-              lat={selectedLocation?.lat}
-              lon={selectedLocation?.lon}
-            />
+            <h2>AI Chatbot</h2>
+
+            <div className="chat-messages">
+              <div className="bot-message">
+                Hello! Ask me anything about the weather.
+              </div>
+            </div>
+
+            <div className="chat-input-container">
+              <input
+                type="text"
+                placeholder="Type your message..."
+                className="chat-input"
+              />
+              <button className="send-btn">
+                <FaPaperPlane />
+              </button>
+            </div>
           </div>
         </div>
       )}
-
     </div>
   );
-}
+};
 
 export default Dashboard;
