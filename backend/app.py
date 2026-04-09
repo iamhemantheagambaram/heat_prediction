@@ -3,12 +3,13 @@ print("🔥 FINAL BACKEND RUNNING")
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
-
 from weather import get_weather
 from model_loader import model
 from api import climate_solutions, heat_advice
+from chat_model import ChatModel
+chatbot = ChatModel()
 
-app = Flask(__name__)
+app = Flask(__name__) 
 CORS(app)
 
 labels = {
@@ -119,20 +120,60 @@ def predict_all():
         return jsonify({"error": str(e)}), 500
 
 
-# 💬 CHATBOT (NO CHANGE)
 @app.route("/api/chat", methods=["POST"])
 def chat():
+    try:
+        data = request.get_json()
 
-    msg = request.json.get("message", "").lower()
+        msg = data.get("message", "").strip()
 
-    if "heat" in msg:
-        return jsonify({"reply": "Heat is high. Stay hydrated and avoid sun."})
+        # 🔥 dynamic location (NO HARDCODE ISSUE)
+        lat = data.get("lat")
+        lon = data.get("lon")
 
-    if "safe time" in msg:
-        return jsonify({"reply": "Avoid outdoor activity between 11 AM and 4 PM."})
+        # fallback only if missing
+        if lat is None or lon is None:
+            lat = 13.0827
+            lon = 80.2707
 
-    return jsonify({"reply": "Ask about heat, safety, or climate."})
+        # 🧠 ML intent
+        tag = chatbot.predict(msg)
+        base_response = chatbot.get_response(tag)
 
+        # 🌦 weather (safe call)
+        try:
+            temp, humidity, pressure, wind = get_weather(lat, lon)
+        except:
+            temp, humidity = None, None
 
+        # 🧠 build response
+        final_response = base_response
+
+        if temp is not None:
+            final_response += f"\n\n🌡 Temperature: {temp}°C"
+            final_response += f"\n💧 Humidity: {humidity}%"
+
+            if temp > 40:
+                final_response += "\n🚨 Extreme heat — avoid going outside."
+            elif temp > 35:
+                final_response += "\n⚠️ High heat — stay hydrated."
+            elif temp > 30:
+                final_response += "\n🌤 Warm weather — drink water regularly."
+
+        # 🌆 UHI context (important for marks)
+        final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to Urban Heat Island effect."
+
+        return jsonify({
+            "reply": final_response,
+            "tag": tag,
+            "lat": lat,
+            "lon": lon
+        })
+
+    except Exception as e:
+        return jsonify({
+            "reply": "System working, but chatbot had an issue.",
+            "error": str(e)
+        })
 if __name__ == "__main__":
     app.run(debug=True)

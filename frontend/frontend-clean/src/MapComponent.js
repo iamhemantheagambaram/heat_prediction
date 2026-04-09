@@ -9,7 +9,6 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 
-
 // ✅ FIX DEFAULT MARKER ISSUE
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -21,20 +20,25 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png"
 });
 
-
-// 🖱 CLICK ANYWHERE FEATURE
-function MapClickHandler({ setLocation }) {
+// 🖱 CLICK HANDLER
+function MapClickHandler({ setLocation, setParentLocation }) {
   useMapEvents({
     click(e) {
-      setLocation({
+      const newLoc = {
         lat: e.latlng.lat,
         lon: e.latlng.lng
-      });
+      };
+
+      setLocation(newLoc);
+
+      // ✅ SEND TO DASHBOARD (for chatbot)
+      if (setParentLocation) {
+        setParentLocation(newLoc);
+      }
     }
   });
   return null;
 }
-
 
 // 🎨 COLOR BASED ON RISK
 const getColor = (risk) => {
@@ -43,9 +47,8 @@ const getColor = (risk) => {
   return "green";
 };
 
-
 // 🌍 MAIN COMPONENT
-const MapComponent = () => {
+const MapComponent = ({ setLocation: setParentLocation }) => {
   const [location, setLocation] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -78,7 +81,7 @@ const MapComponent = () => {
 
   }, [location]);
 
-  // 🔍 SEARCH FUNCTION (INDUSTRY WAY)
+  // 🔍 SEARCH FUNCTION
   const searchLocation = async () => {
     if (!query) return;
 
@@ -93,7 +96,15 @@ const MapComponent = () => {
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
 
-        setLocation({ lat, lon });
+        const newLoc = { lat, lon };
+
+        setLocation(newLoc);
+
+        // ✅ SEND TO DASHBOARD
+        if (setParentLocation) {
+          setParentLocation(newLoc);
+        }
+
       } else {
         alert("Location not found");
       }
@@ -161,7 +172,11 @@ const MapComponent = () => {
           url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
         />
 
-        <MapClickHandler setLocation={setLocation} />
+        {/* 🖱 Click Handler */}
+        <MapClickHandler 
+          setLocation={setLocation} 
+          setParentLocation={setParentLocation} 
+        />
 
         {/* 📍 Marker */}
         {location && (

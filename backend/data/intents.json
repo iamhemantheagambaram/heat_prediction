@@ -1,0 +1,44 @@
+{
+  "intents": [
+    {
+      "tag": "clothing",
+      "patterns": ["what should i wear", "clothes for heat", "dress today"],
+      "responses": [
+        "Wear light cotton or linen clothes. Choose loose-fitting and light-colored outfits.",
+        "Use breathable fabrics like cotton. Avoid dark colors in high heat."
+      ]
+    },
+    {
+      "tag": "hydration",
+      "patterns": ["how much water", "hydration", "stay hydrated"],
+      "responses": [
+        "Drink at least 500ml of water every hour in hot conditions.",
+        "Increase water intake and avoid caffeine during high heat."
+      ]
+    },
+    {
+      "tag": "heat_risk",
+      "patterns": ["is it safe outside", "heat risk", "too hot"],
+      "responses": [
+        "Avoid going outside between 12 PM and 3 PM.",
+        "Heat levels are high. Limit outdoor exposure."
+      ]
+    },
+    {
+      "tag": "uhi",
+      "patterns": ["what is uhi", "urban heat island", "why city hot"],
+      "responses": [
+        "Urban Heat Island means cities are 2–5°C hotter due to concrete and lack of greenery.",
+        "Buildings and roads trap heat, making cities hotter than rural areas."
+      ]
+    },
+    {
+      "tag": "default",
+      "patterns": [],
+      "responses": [
+        "I can help with heat, weather, clothing, and hydration. Try asking about those.",
+        "Ask me about temperature, heat risk, or how to stay cool."
+      ]
+    }
+  ]
+}
