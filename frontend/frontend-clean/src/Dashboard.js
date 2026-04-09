@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import WeatherCards from "./WeatherCards";
 import UHIChatbot from "./UHIChatbot";
 import MapComponent from "./MapComponent";
 
 function Dashboard() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [heatData, setHeatData] = useState([]);
+  const [showHeatMapPopup, setShowHeatMapPopup] = useState(false);
+  const [showChatbotPopup, setShowChatbotPopup] = useState(false);
 
-  // ✅ NO DEFAULT LOCATION
+  const [location, setLocation] = useState(null);
+
+  // ✅ dynamic location from map
   const [selectedLocation, setSelectedLocation] = useState(null);
 
   const getUserLocation = () => {
@@ -19,12 +20,11 @@ function Dashboard() {
         reject("Geolocation not supported");
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (position) => {
           resolve({
             lat: position.coords.latitude,
-            lon: position.coords.longitude
+            lon: position.coords.longitude,
           });
         },
         (error) => reject(error.message),
@@ -35,81 +35,102 @@ function Dashboard() {
 
   const fetchPrediction = async () => {
     try {
-      const location = await getUserLocation();
+      const loc = await getUserLocation();
 
       const response = await fetch("http://127.0.0.1:5000/api/live", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(location)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(loc),
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Backend error");
-      }
+      if (!response.ok) throw new Error(result.error || "Backend error");
 
       setData({
         temp: result.temp,
         humidity: result.humidity,
         wind: result.wind,
         risk: result.risk,
-        recommendation: result.recommendation
+        recommendation: result.recommendation, // 🔥 object
+        weather: result.weather,
       });
 
-      setLoading(false);
-
+      setLocation(loc);
     } catch (err) {
       setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  const fetchHeatMap = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:5000/predict-all");
-      const data = await res.json();
-      setHeatData(data);
-    } catch (err) {
-      console.error("Heatmap error:", err);
     }
   };
 
   useEffect(() => {
     fetchPrediction();
-    fetchHeatMap();
   }, []);
+
+  // UI helpers
+  let tempIcon = "🟢";
+  if (data?.temp > 38) tempIcon = "🔴";
+  else if (data?.temp > 30) tempIcon = "🟠";
+
+  const weatherIcon = (type) => {
+    switch (type) {
+      case "sunny": return "🌞";
+      case "cloudy": return "☁️";
+      case "rain": return "🌧️";
+      case "thunder": return "⚡";
+      default: return "❓";
+    }
+  };
 
   return (
     <div style={{ display: "flex", width: "100%" }}>
       
       {/* LEFT SIDE */}
-      <div className="dashboard">
+      <div style={{ flex: 3 }}>
 
-        <WeatherCards data={data} />
+        {location && (
+          <p>📍 Lat {location.lat}, Lon {location.lon}</p>
+        )}
 
-        <div className="card">
-          <h3>Areas in Chennai</h3>
-          <p>📍 Anna Nagar</p>
-          <p>📍 T Nagar</p>
-          <p>📍 Velachery</p>
-          <p>📍 Adyar</p>
+        {/* Cards */}
+        <div style={{ display: "flex", gap: "10px" }}>
+          <div className="card">
+            <h3>{tempIcon} Temp</h3>
+            <p>{data?.temp ?? "--"}°C</p>
+          </div>
+
+          <div className="card">
+            <h3>💧 Humidity</h3>
+            <p>{data?.humidity ?? "--"}%</p>
+          </div>
+
+          <div className="card">
+            <h3>🌬 Wind</h3>
+            <p>{data?.wind ?? "--"} km/h</p>
+          </div>
+
+          <div className="card">
+            <h3>{weatherIcon(data?.weather)} Weather</h3>
+            <p>{data?.weather ?? "--"}</p>
+          </div>
         </div>
 
         {/* MAP */}
-        <div className="card" style={{ marginTop: "20px" }}>
-          <h3>Chennai - Heat Zones</h3>
-
+        <div style={{ marginTop: "20px" }}>
           <MapComponent setLocation={setSelectedLocation} />
         </div>
 
+        {/* 🔥 FIXED RECOMMENDATIONS */}
         <div className="card" style={{ marginTop: "20px" }}>
-          <h3>Climate Trend (Next 7 Days)</h3>
-          <p style={{ color: "#aaa" }}>
-            Graph will be displayed after data integration
-          </p>
+          <h3>💡 Recommendations</h3>
+
+          {data?.recommendation ? (
+            <div className="recommendation-text">
+              <p><b>👕 Clothing:</b> {data.recommendation.clothing}</p>
+              <p><b>💧 Hydration:</b> {data.recommendation.hydration}</p>
+              <p><b>🌤 Outdoor Advice:</b> {data.recommendation.outdoor_advice}</p>
+            </div>
+          ) : (
+            <p>Waiting...</p>
+          )}
         </div>
 
       </div>
@@ -117,37 +138,41 @@ function Dashboard() {
       {/* RIGHT SIDE */}
       <div className="right-panel">
 
-        <div className="card">
-          <h3>Area Dashboard</h3>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : error ? (
-            <p style={{ color: "red" }}>{error}</p>
-          ) : (
-            <p>Heat Risk: {data?.risk}</p>
-          )}
+        <div className="card" onClick={() => setShowHeatMapPopup(true)}>
+          <h3>🗺 Heat Map</h3>
         </div>
 
-        <div className="card" style={{ marginTop: "15px" }}>
-          <h3>Solutions</h3>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : (
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(data?.recommendation, null, 2)}
-            </pre>
-          )}
+        <div className="card" onClick={() => setShowChatbotPopup(true)}>
+          <h3>🤖 AI Chatbot</h3>
         </div>
-
-        {/* ✅ CHATBOT (SAFE + DYNAMIC) */}
-        <UHIChatbot
-          lat={selectedLocation?.lat}
-          lon={selectedLocation?.lon}
-        />
 
       </div>
+
+      {/* HEATMAP POPUP */}
+      {showHeatMapPopup && (
+        <div className="popup-overlay">
+          <div className="popup-box-blue">
+            <button className="close-btn" onClick={() => setShowHeatMapPopup(false)}>×</button>
+
+            <MapComponent setLocation={setSelectedLocation} />
+          </div>
+        </div>
+      )}
+
+      {/* CHATBOT POPUP */}
+      {showChatbotPopup && (
+        <div className="popup-overlay">
+          <div className="chatbot-popup-center">
+            <button className="close-btn" onClick={() => setShowChatbotPopup(false)}>×</button>
+
+            <UHIChatbot
+              lat={selectedLocation?.lat}
+              lon={selectedLocation?.lon}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
