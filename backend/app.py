@@ -5,10 +5,8 @@ from flask_cors import CORS
 import pandas as pd
 from weather import get_weather
 from model_loader import model
-from api import climate_solutions, heat_advice
+from api import heat_recommendations
 from chat_model import ChatModel
-from chat_local import get_response
-import re
 
 chatbot = ChatModel()
 
@@ -55,17 +53,14 @@ def predict_heat():
 
         avg_temp = (temp_max + temp_min) / 2
 
-        recommendation = heat_advice.get(heat_risk, {})
-        climate, climate_advice = climate_solutions(avg_temp)
-
+        recommendation = heat_recommendations.get(heat_risk, {})
+        
         return jsonify({
             "temp": temp,
             "humidity": humidity,
             "wind": wind,
             "risk": heat_risk,
-            "recommendation": recommendation,
-            "climate_type": climate,
-            "climate_solutions": climate_advice
+            "recommendation": recommendation
         })
 
     except Exception as e:
@@ -114,24 +109,54 @@ def predict_all():
     except Exception as e:
         print("❌ GRID ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/predict_heat", methods=["POST"])
+def predict_heat_recommendation():
+    try:
+        data = request.get_json()
 
+        temp_max = data.get("temperature_2m_max")
+        temp_min = data.get("temperature_2m_min")
+        wind = data.get("wind_speed_10m_max")
 
-# 🔥 AI CHATBOT API
+        sample = pd.DataFrame([[temp_max, temp_min, 0, wind]], columns=[
+            "temperature_2m_max",
+            "temperature_2m_min",
+            "precipitation_sum",
+            "wind_speed_10m_max"
+        ])
+
+        prediction = model.predict(sample)[0]
+        heat_risk = labels.get(prediction, "Unknown")
+
+        recommendation = heat_recommendations.get(heat_risk, {})
+
+        return jsonify({
+            "heat_risk": heat_risk,
+            "human_recommendations": recommendation.get("human", {}),
+            "environment_recommendations": recommendation.get("environment", {})
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# 🔥 AI CHATBOT API (FINAL CLEAN VERSION)
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
         data = request.get_json()
-        msg = data.get("message", "").lower().strip()
 
-        # 🔥 dynamic location
-        lat = data.get("lat")
-        lon = data.get("lon")
+        msg = data.get("message", "").strip()
+        if not msg:
+            return jsonify({"reply": "Please enter a message."}), 400
 
-        if lat is None or lon is None:
-            lat = 13.0827
-            lon = 80.2707
+        msg = msg.lower()
 
-        # 🧠 intent detection (ML)
+        # 🔥 location
+        lat = data.get("lat", 13.0827)
+        lon = data.get("lon", 80.2707)
+
+        # 🧠 intent
         tag = chatbot.predict(msg)
         base_response = chatbot.get_response(tag)
 
@@ -139,57 +164,37 @@ def chat():
         try:
             temp, humidity, pressure, wind = get_weather(lat, lon)
         except:
-            temp, humidity = None, None
+            temp, humidity, pressure, wind = None, None, None, None
 
-        # 🧠 FINAL RESPONSE (STRICT LOGIC)
-        final_response = ""
+        final_response = base_response
 
-        # 🔥 TEMPERATURE (ONLY WHEN ASKED)
-        if tag == "temperature":
-            if temp is not None:
-                final_response = f"The current temperature is {temp}°C."
+        # 🔥 SMART RESPONSE LOGIC
+        if tag == "temperature" and temp is not None:
+            final_response = f"{base_response} Current temperature is {temp}°C."
+
+        elif tag == "clothing" and temp is not None:
+            if temp >= 38:
+                final_response = "It's very hot. Wear light cotton clothes and avoid dark colors."
+            elif temp >= 32:
+                final_response = "Wear breathable and light clothing. Stay hydrated."
             else:
-                final_response = "Unable to fetch temperature."
+                final_response = "Weather is comfortable. Normal clothing is fine."
 
-        # 🔥 CLOTHING
-        elif tag == "clothing":
-            if temp is not None:
-                if temp >= 38:
-                    final_response = "It's very hot. Wear light cotton clothes and avoid dark colors."
-                elif temp >= 32:
-                    final_response = "Wear breathable and light clothing. Stay hydrated."
-                else:
-                    final_response = "Weather is comfortable. Normal clothing is fine."
+        elif tag == "safety" and temp is not None:
+            if temp >= 38:
+                final_response = "Extreme heat. Avoid going outside during peak hours."
+            elif temp >= 32:
+                final_response = "Moderate heat. Limit outdoor exposure."
             else:
-                final_response = base_response
+                final_response = "Weather is safe for outdoor activities."
 
-        # 🔥 SAFETY
-        elif tag == "safety":
-            if temp is not None:
-                if temp >= 38:
-                    final_response = "Extreme heat. Avoid going outside during peak hours."
-                elif temp >= 32:
-                    final_response = "Moderate heat. Limit outdoor exposure."
-                else:
-                    final_response = "Weather is safe for outdoor activities."
+        elif tag == "health" and temp is not None:
+            if temp >= 38:
+                final_response = "High risk of heatstroke. Stay hydrated and indoors."
             else:
-                final_response = base_response
+                final_response = "Stay hydrated and avoid long sun exposure."
 
-        # 🔥 HEALTH
-        elif tag == "health":
-            if temp is not None:
-                if temp >= 38:
-                    final_response = "High risk of heatstroke. Stay hydrated and indoors."
-                else:
-                    final_response = "Stay hydrated and avoid long sun exposure."
-            else:
-                final_response = base_response
-
-        # 🔥 GENERAL / FALLBACK
-        else:
-            final_response = base_response
-
-        # 🔥 OPTIONAL: UHI context (ONLY for general queries)
+        # 🔥 UHI info
         if tag == "general":
             final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to the Urban Heat Island effect."
 
@@ -201,10 +206,8 @@ def chat():
         })
 
     except Exception as e:
-        return jsonify({
-            "reply": "System working, but chatbot had an issue.",
-            "error": str(e)
-        })
+        print("CHAT ERROR:", e)
+        return jsonify({"reply": "Something went wrong."}), 500
 
 
 # 🔥 NEW: 5 DAY HEAT TREND API (ONLY FIXED POSITION)
@@ -250,4 +253,4 @@ def heat_trend():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

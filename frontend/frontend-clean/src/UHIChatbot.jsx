@@ -8,13 +8,11 @@ export default function UHIChatbot({ lat, lon }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🔥 NEW STATES
-  const [language, setLanguage] = useState("en"); // en / ta
+  const [language, setLanguage] = useState("en");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   const chatEndRef = useRef(null);
 
-  // 🔥 AUTO SCROLL
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -32,7 +30,7 @@ export default function UHIChatbot({ lat, lon }) {
         message: text,
         lat,
         lon,
-        language // 🔥 send language
+        language
       });
 
       const reply = res.data.reply;
@@ -42,7 +40,6 @@ export default function UHIChatbot({ lat, lon }) {
         { role: "assistant", content: reply }
       ]);
 
-      // 🔊 Speak ONLY if enabled
       if (voiceEnabled) speak(reply);
 
     } catch (err) {
@@ -55,7 +52,6 @@ export default function UHIChatbot({ lat, lon }) {
     setLoading(false);
   };
 
-  // 🎤 VOICE INPUT (ONLY WHEN BUTTON CLICKED)
   const startVoice = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -66,8 +62,6 @@ export default function UHIChatbot({ lat, lon }) {
     }
 
     const recognition = new SpeechRecognition();
-
-    // 🔥 LANGUAGE BASED INPUT
     recognition.lang = language === "ta" ? "ta-IN" : "en-US";
 
     recognition.onresult = (event) => {
@@ -78,41 +72,34 @@ export default function UHIChatbot({ lat, lon }) {
     recognition.start();
   };
 
-  // 🔊 TEXT TO SPEECH
   const speak = (text) => {
     const speech = new SpeechSynthesisUtterance(text);
-
-    // 🔥 LANGUAGE BASED OUTPUT
     speech.lang = language === "ta" ? "ta-IN" : "en-US";
-
     window.speechSynthesis.speak(speech);
   };
 
   return (
-    <>
-      {/* 🔥 HEADER */}
-      <h3 style={{ marginBottom: "10px" }}>🤖 UHI Assistant</h3>
+    <div className="chat-wrapper">
 
-      {/* 🌐 LANGUAGE + VOICE TOGGLE */}
-      <div style={{ marginBottom: "10px" }}>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-        >
+      {/* HEADER */}
+      <div className="chat-header">
+        🤖 UHI Assistant
+      </div>
+
+      {/* CONTROLS */}
+      <div className="chat-controls">
+        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
           <option value="en">English</option>
           <option value="ta">Tamil</option>
         </select>
 
-        <button
-          onClick={() => setVoiceEnabled(!voiceEnabled)}
-          style={{ marginLeft: "10px" }}
-        >
-          {voiceEnabled ? "🔊 Voice ON" : "🔇 Voice OFF"}
+        <button onClick={() => setVoiceEnabled(!voiceEnabled)}>
+          {voiceEnabled ? "🔊 ON" : "🔇 OFF"}
         </button>
       </div>
 
-      {/* 💬 MESSAGES */}
-      <div className="chatbot-container">
+      {/* MESSAGES */}
+      <div className="chat-body">
         {messages.map((m, i) => (
           <div
             key={i}
@@ -125,15 +112,13 @@ export default function UHIChatbot({ lat, lon }) {
         ))}
 
         {loading && (
-          <div className="chat-bubble chat-bot">
-            typing...
-          </div>
+          <div className="chat-bubble chat-bot typing">Typing...</div>
         )}
 
         <div ref={chatEndRef} />
       </div>
 
-      {/* ✏ INPUT */}
+      {/* INPUT */}
       <div className="chat-input">
         <input
           value={input}
@@ -146,15 +131,10 @@ export default function UHIChatbot({ lat, lon }) {
           }
         />
 
-        <button onClick={() => sendMessage()}>
-          Send
-        </button>
-
-        {/* 🎤 VOICE BUTTON */}
-        <button onClick={startVoice} style={{ marginLeft: "5px" }}>
-          🎤
-        </button>
+        <button onClick={() => sendMessage()}>➤</button>
+        <button onClick={startVoice}>🎤</button>
       </div>
-    </>
+
+    </div>
   );
 }

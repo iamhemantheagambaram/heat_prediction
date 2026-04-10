@@ -3,13 +3,14 @@ import {
   TileLayer,
   Marker,
   Popup,
+  useMap,
   useMapEvents
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 
-// ✅ FIX DEFAULT MARKER ISSUE
+// ✅ FIX DEFAULT MARKER ISSUE (KEEP THIS)
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -20,7 +21,20 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png"
 });
 
-// 🖱 CLICK HANDLER
+// 🔄 AUTO MOVE MAP WHEN LAT/LON CHANGES
+const ChangeView = ({ lat, lon }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (lat && lon) {
+      map.setView([lat, lon], 14);
+    }
+  }, [lat, lon, map]);
+
+  return null;
+};
+
+// 🖱 CLICK HANDLER (DO NOT TOUCH YOUR FLOW)
 function MapClickHandler({ setLocation, setParentLocation }) {
   useMapEvents({
     click(e) {
@@ -29,37 +43,39 @@ function MapClickHandler({ setLocation, setParentLocation }) {
         lon: e.latlng.lng
       };
 
+      // local state
       setLocation(newLoc);
 
-      // ✅ SEND TO DASHBOARD (for chatbot)
+      // update dashboard (IMPORTANT)
       if (setParentLocation) {
         setParentLocation(newLoc);
       }
     }
   });
-  return null;
-}
 
-// 🎨 COLOR BASED ON RISK
+  return null;
+};
+
+// 🎨 COLOR
 const getColor = (risk) => {
   if (risk === "High") return "red";
   if (risk === "Medium") return "orange";
   return "green";
 };
 
-// 🌍 MAIN COMPONENT
-const MapComponent = ({ setLocation: setParentLocation }) => {
+const MapComponent = ({ lat, lon, setLocation: setParentLocation }) => {
   const [location, setLocation] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState("");
 
-  // 🔄 Reset result when new location
+  // 🔁 Sync with dashboard location (THIS PRESERVES YOUR AUTO GEO)
   useEffect(() => {
-    setResult(null);
-  }, [location]);
+    if (lat && lon) {
+      setLocation({ lat, lon });
+    }
+  }, [lat, lon]);
 
-  // 🔥 FETCH BACKEND DATA
+  // 🌡 OPTIONAL: fetch data for popup only (safe)
   useEffect(() => {
     if (!location) return;
 
@@ -81,108 +97,45 @@ const MapComponent = ({ setLocation: setParentLocation }) => {
 
   }, [location]);
 
-  // 🔍 SEARCH FUNCTION
-  const searchLocation = async () => {
-    if (!query) return;
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${query}`
-      );
-
-      const data = await res.json();
-
-      if (data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-
-        const newLoc = { lat, lon };
-
-        setLocation(newLoc);
-
-        // ✅ SEND TO DASHBOARD
-        if (setParentLocation) {
-          setParentLocation(newLoc);
-        }
-
-      } else {
-        alert("Location not found");
-      }
-
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   return (
-    <div style={{
-      borderRadius: "12px",
-      overflow: "hidden",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
-    }}>
-
-      {/* 🔍 SEARCH BAR */}
-      <div style={{
-        padding: "10px",
-        background: "#1e1e1e",
-        display: "flex"
-      }}>
-        <input
-          type="text"
-          placeholder="Search any location..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{
-            flex: 1,
-            padding: "10px",
-            borderRadius: "6px",
-            border: "none"
-          }}
-        />
-        <button
-          onClick={searchLocation}
-          style={{
-            marginLeft: "10px",
-            padding: "10px 15px",
-            background: "#ff5722",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer"
-          }}
-        >
-          Search
-        </button>
-      </div>
-
-      {/* 🗺 MAP */}
+    <div
+      style={{
+        height: "100%",
+        width: "100%",
+        borderRadius: "12px",
+        overflow: "hidden"
+      }}
+    >
       <MapContainer
-        center={[13.0827, 80.2707]}
-        zoom={12}
-        style={{ height: "500px", width: "100%" }}
+        center={[lat || 13.0827, lon || 80.2707]} // fallback safe
+        zoom={13}
+        style={{ height: "100%", width: "100%" }}
       >
 
-        {/* 🌍 Satellite */}
+        {/* 🌍 MAP */}
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         />
 
-        {/* 🏷 Labels */}
+        {/* 🏷 LABELS */}
         <TileLayer
           url="https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
         />
 
-        {/* 🖱 Click Handler */}
-        <MapClickHandler 
-          setLocation={setLocation} 
-          setParentLocation={setParentLocation} 
+        {/* 🔄 AUTO MOVE */}
+        <ChangeView lat={lat} lon={lon} />
+
+        {/* 🖱 CLICK SUPPORT */}
+        <MapClickHandler
+          setLocation={setLocation}
+          setParentLocation={setParentLocation}
         />
 
-        {/* 📍 Marker */}
+        {/* 📍 MARKER */}
         {location && (
           <Marker position={[location.lat, location.lon]}>
             <Popup>
-              <b>📍 Location</b><br />
+              <b>📍 Selected Location</b><br />
 
               {loading ? (
                 "⏳ Loading..."
@@ -191,37 +144,17 @@ const MapComponent = ({ setLocation: setParentLocation }) => {
                   🌡 Temp: {result.temp}°C <br />
                   💧 Humidity: {result.humidity}% <br />
                   🌬 Wind: {result.wind} km/h <br />
-                  🔥 Risk: <span style={{ color: getColor(result.risk) }}>
+                  🔥 Risk:{" "}
+                  <span style={{ color: getColor(result.risk) }}>
                     {result.risk}
                   </span>
                 </>
-              ) : "Click or search"}
+              ) : "Click on map"}
             </Popup>
           </Marker>
         )}
 
       </MapContainer>
-
-      {/* 📊 RESULT PANEL */}
-      {result && (
-        <div style={{
-          padding: "15px",
-          background: "#121212",
-          color: "white"
-        }}>
-          <h3>📊 Heat Analysis</h3>
-
-          <p>🌡 Temperature: {result.temp}°C</p>
-          <p>🔥 Risk: <b style={{ color: getColor(result.risk) }}>
-            {result.risk}
-          </b></p>
-
-          <h4>💡 Recommendations</h4>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(result.recommendation, null, 2)}
-          </pre>
-        </div>
-      )}
     </div>
   );
 };
