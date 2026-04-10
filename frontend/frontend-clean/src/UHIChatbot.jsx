@@ -79,23 +79,22 @@ export default function UHIChatbot({ lat, lon }) {
   };
 
   return (
-    <div className="chat-wrapper">
+    <div className="chat-container">
 
       {/* HEADER */}
       <div className="chat-header">
-        🤖 UHI Assistant
-      </div>
+        <span>🤖 UHI Assistant</span>
 
-      {/* CONTROLS */}
-      <div className="chat-controls">
-        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-          <option value="en">English</option>
-          <option value="ta">Tamil</option>
-        </select>
+        <div className="chat-controls">
+          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            <option value="en">English</option>
+            <option value="ta">Tamil</option>
+          </select>
 
-        <button onClick={() => setVoiceEnabled(!voiceEnabled)}>
-          {voiceEnabled ? "🔊 ON" : "🔇 OFF"}
-        </button>
+          <button onClick={() => setVoiceEnabled(!voiceEnabled)}>
+            {voiceEnabled ? "🔊" : "🔇"}
+          </button>
+        </div>
       </div>
 
       {/* MESSAGES */}
@@ -103,23 +102,25 @@ export default function UHIChatbot({ lat, lon }) {
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`chat-bubble ${
-              m.role === "user" ? "chat-user" : "chat-bot"
-            }`}
+            className={`chat-row ${m.role === "user" ? "user" : "bot"}`}
           >
-            {m.content}
+            <div className="chat-bubble">
+              {m.content}
+            </div>
           </div>
         ))}
 
         {loading && (
-          <div className="chat-bubble chat-bot typing">Typing...</div>
+          <div className="chat-row bot">
+            <div className="chat-bubble typing">Typing...</div>
+          </div>
         )}
 
         <div ref={chatEndRef} />
       </div>
 
       {/* INPUT */}
-      <div className="chat-input">
+      <div className="chat-input-area">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

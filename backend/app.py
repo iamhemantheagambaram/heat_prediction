@@ -65,6 +65,20 @@ def predict_heat():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/api/heatmap", methods=["POST"])
+def heatmap():
+    data = request.get_json()
+    lat = data["lat"]
+    lon = data["lon"]
+
+    points = [
+        {"lat": lat, "lon": lon, "temp": 35},
+        {"lat": lat + 0.01, "lon": lon + 0.01, "temp": 37},
+        {"lat": lat - 0.01, "lon": lon - 0.01, "temp": 32}
+    ]
+
+    return jsonify(points)
 
 
 # 🔥 GRID HEATMAP API
@@ -133,77 +147,102 @@ def predict_heat_recommendation():
 
         return jsonify({
             "heat_risk": heat_risk,
-            "human_recommendations": recommendation.get("human", {}),
-            "environment_recommendations": recommendation.get("environment", {})
+            "human_recommendations": recommendation.get("human_recommendations", {}),
+            "environment_recommendations": recommendation.get("environment_recommendations", {})
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 # 🔥 AI CHATBOT API (FINAL CLEAN VERSION)
+# 🔥 AI CHATBOT API (UPGRADED WITH TAMIL SUPPORT)
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
         data = request.get_json()
 
         msg = data.get("message", "").strip()
+        language = data.get("language", "en")
+
         if not msg:
             return jsonify({"reply": "Please enter a message."}), 400
 
-        msg = msg.lower()
+        msg_lower = msg.lower()
 
-        # 🔥 location
         lat = data.get("lat", 13.0827)
         lon = data.get("lon", 80.2707)
 
-        # 🧠 intent
-        tag = chatbot.predict(msg)
-        base_response = chatbot.get_response(tag)
+        tag = chatbot.predict(msg_lower)
+        base_response = chatbot.get_response(tag, language)
 
-        # 🌦 weather
         try:
             temp, humidity, pressure, wind = get_weather(lat, lon)
         except:
             temp, humidity, pressure, wind = None, None, None, None
 
-        final_response = base_response
+        # ================= ENGLISH =================
+        if language == "en":
 
-        # 🔥 SMART RESPONSE LOGIC
-        if tag == "temperature" and temp is not None:
-            final_response = f"{base_response} Current temperature is {temp}°C."
+            if tag == "clothing" and temp:
+                if temp >= 38:
+                    reply = "🔥 It's very hot. Wear light cotton clothes and avoid dark colors."
+                elif temp >= 32:
+                    reply = "🌤 Wear breathable clothes and stay hydrated."
+                else:
+                    reply = "😊 Weather is comfortable. Normal clothing is fine."
 
-        elif tag == "clothing" and temp is not None:
-            if temp >= 38:
-                final_response = "It's very hot. Wear light cotton clothes and avoid dark colors."
-            elif temp >= 32:
-                final_response = "Wear breathable and light clothing. Stay hydrated."
+            elif tag == "heat_risk" and temp:
+                if temp >= 38:
+                    reply = "⚠️ Extreme heat. Avoid going outside between 12–3 PM."
+                elif temp >= 32:
+                    reply = "🌤 Moderate heat. Limit outdoor exposure."
+                else:
+                    reply = "✅ Safe weather for outdoor activities."
+
+            elif tag == "hydration":
+                reply = "💧 Drink water regularly. At least 3–4 liters in hot weather."
+
+            elif tag == "uhi":
+                reply = "Concrete traps heat in cities, Plant Trees around your surroundings to reduce heat and also use Cool roofings."
+
             else:
-                final_response = "Weather is comfortable. Normal clothing is fine."
+                reply = base_response
 
-        elif tag == "safety" and temp is not None:
-            if temp >= 38:
-                final_response = "Extreme heat. Avoid going outside during peak hours."
-            elif temp >= 32:
-                final_response = "Moderate heat. Limit outdoor exposure."
+            if temp:
+                reply += f"\n🌡 Current temperature: {temp}°C"
+
+        # ================= TAMIL =================
+        elif language == "ta":
+
+            if tag == "clothing" and temp:
+                if temp >= 38:
+                    reply = "🔥 மிகவும் சூடாக உள்ளது. லைட் காட்ன் உடைகள் அணியுங்கள்."
+                elif temp >= 32:
+                    reply = "🌤 இலகுரக உடைகள் அணிந்து, தண்ணீர் குடிக்கவும்."
+                else:
+                    reply = "😊 வானிலை சீராக உள்ளது."
+
+            elif tag == "heat_risk" and temp:
+                if temp >= 38:
+                    reply = "⚠️ அதிக வெப்பம். மதியம் 12–3 வரை வெளியே செல்ல வேண்டாம்."
+                elif temp >= 32:
+                    reply = "🌤 மிதமான வெப்பம். வெளியே செல்லும்போது கவனம்."
+                else:
+                    reply = "✅ பாதுகாப்பான வானிலை."
+
+            elif tag == "hydration":
+                reply = "💧 அதிக தண்ணீர் குடிக்கவும். வெப்பத்தில் உடலை குளிர்விக்க உதவும்."
+
+            elif tag == "uhi":
+                reply = "🏙 நகரங்களில் மரங்கள் குறைவாக இருப்பதால் வெப்பம் அதிகரிக்கும், கான்கிரீட் வெப்பத்தை தக்கவைத்து நகரங்களை சூடாக்குகிறது."
+
             else:
-                final_response = "Weather is safe for outdoor activities."
+                reply = "நான் வெப்பம், வானிலை மற்றும் பாதுகாப்பு குறித்து உதவ முடியும்."
 
-        elif tag == "health" and temp is not None:
-            if temp >= 38:
-                final_response = "High risk of heatstroke. Stay hydrated and indoors."
-            else:
-                final_response = "Stay hydrated and avoid long sun exposure."
+            if temp:
+                reply += f"\n🌡 தற்போதைய வெப்பநிலை: {temp}°C"
 
-        # 🔥 UHI info
-        if tag == "general":
-            final_response += "\n\n🏙 Urban areas are usually 2–5°C hotter due to the Urban Heat Island effect."
-
-        return jsonify({
-            "reply": final_response,
-            "tag": tag,
-            "lat": lat,
-            "lon": lon
-        })
+        return jsonify({"reply": reply})
 
     except Exception as e:
         print("CHAT ERROR:", e)

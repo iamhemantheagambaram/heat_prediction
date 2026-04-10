@@ -2,42 +2,83 @@
   "intents": [
     {
       "tag": "clothing",
-      "patterns": ["what should i wear", "clothes for heat", "dress today"],
-      "responses": [
-        "Wear light cotton or linen clothes. Choose loose-fitting and light-colored outfits.",
-        "Use breathable fabrics like cotton. Avoid dark colors in high heat."
+      "patterns": [
+        "what should i wear",
+        "enna dress podanum",
+        "enna udai aniya",
+        "heat ku enna wear",
+        "enna dress pottukalam"
+      ],
+      "responses_en": [
+        "Wear light cotton clothes and avoid dark colors.",
+        "Use breathable fabrics like cotton or linen."
+      ],
+      "responses_ta": [
+        "லைட் காட்ன் உடைகள் அணியுங்கள், கருப்பு நிறத்தை தவிர்க்கவும்.",
+        "காற்றோட்டம் உள்ள துணிகளை பயன்படுத்துங்கள்."
       ]
     },
+
     {
       "tag": "hydration",
-      "patterns": ["how much water", "hydration", "stay hydrated"],
-      "responses": [
-        "Drink at least 500ml of water every hour in hot conditions.",
-        "Increase water intake and avoid caffeine during high heat."
+      "patterns": [
+        "how much water should i drink",
+        "thanni evlo kudikanum",
+        "water evlo venum"
+      ],
+      "responses_en": [
+        "Drink at least 3–4 liters of water daily.",
+        "Stay hydrated in hot weather."
+      ],
+      "responses_ta": [
+        "நாளுக்கு குறைந்தது 3–4 லிட்டர் தண்ணீர் குடிக்கவும்.",
+        "வெப்பத்தில் உடல் குளிர்வதற்கு தண்ணீர் அவசியம்."
       ]
     },
+
     {
       "tag": "heat_risk",
-      "patterns": ["is it safe outside", "heat risk", "too hot"],
-      "responses": [
+      "patterns": [
+        "is it safe outside",
+        "veli pogalama",
+        "romba veyil ah"
+      ],
+      "responses_en": [
         "Avoid going outside between 12 PM and 3 PM.",
-        "Heat levels are high. Limit outdoor exposure."
+        "Limit outdoor exposure."
+      ],
+      "responses_ta": [
+        "மதியம் 12 முதல் 3 வரை வெளியே செல்ல வேண்டாம்.",
+        "வெப்பத்தில் வெளியே போகாமல் இருக்கவும்."
       ]
     },
+
     {
       "tag": "uhi",
-      "patterns": ["what is uhi", "urban heat island", "why city hot"],
-      "responses": [
-        "Urban Heat Island means cities are 2–5°C hotter due to concrete and lack of greenery.",
-        "Buildings and roads trap heat, making cities hotter than rural areas."
+      "patterns": [
+        "what is uhi",
+        "urban heat island",
+        "nagaram heat adhigama",
+        "heat epdi koraikurathu"
+      ],
+      "responses_en": [
+        "Concrete traps heat in cities, Plant Trees around your surroundings to reduce heat and also use Cool roofings."
+      ],
+      "responses_ta": [
+        "கான்கிரீட் வெப்பத்தை தக்கவைத்து நகரங்களை சூடாக்குகிறது."
       ]
     },
+
     {
       "tag": "default",
       "patterns": [],
-      "responses": [
-        "I can help with heat, weather, clothing, and hydration. Try asking about those.",
-        "Ask me about temperature, heat risk, or how to stay cool."
+      "responses_en": [
+        "Ask me about heat, weather or safety.",
+        "I can help you stay cool."
+      ],
+      "responses_ta": [
+        "வெப்பம் அல்லது வானிலை பற்றி கேளுங்கள்.",
+        "நான் உங்களுக்கு உதவ முடியும்."
       ]
     }
   ]

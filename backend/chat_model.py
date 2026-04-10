@@ -8,7 +8,8 @@ class ChatModel:
     def __init__(self):
         path = os.path.join("data", "intents.json")
 
-        with open(path) as f:
+        # ✅ UTF-8 fix for Tamil
+        with open(path, encoding="utf-8") as f:
             self.data = json.load(f)
 
         self.patterns = []
@@ -32,8 +33,17 @@ class ChatModel:
         except:
             return "default"
 
-    def get_response(self, tag):
+    def get_response(self, tag, language="en"):
         for intent in self.data["intents"]:
             if intent["tag"] == tag:
-                return random.choice(intent["responses"])
+
+                # ✅ Tamil response
+                if language == "ta":
+                    return random.choice(
+                        intent.get("responses_ta", intent.get("responses_en", []))
+                    )
+
+                # ✅ English response
+                return random.choice(intent.get("responses_en", []))
+
         return "Ask me about heat or weather."
