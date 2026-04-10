@@ -9,6 +9,7 @@ const Dashboard = () => {
   const [data, setData] = useState(null);
   const [recommendationData, setRecommendationData] = useState(null);
   const [search, setSearch] = useState("");
+  const [showChatbot, setShowChatbot] = useState(false);
 
   // 🌍 AUTO LOCATION (UNCHANGED)
   useEffect(() => {
@@ -31,24 +32,21 @@ const Dashboard = () => {
 
     fetch("http://127.0.0.1:5000/api/live", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(selectedLocation),
     })
       .then((res) => res.json())
-      .then((data) => setData(data));
+      .then((data) => setData(data))
+      .catch((err) => console.error("LIVE API ERROR:", err));
   }, [selectedLocation]);
 
-  // 🔥 RECOMMENDATION FIX
+  // 🔥 RECOMMENDATION
   useEffect(() => {
     if (!data || !data.temp || !data.wind) return;
 
     fetch("http://127.0.0.1:5000/predict_heat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         temperature_2m_max: data.temp,
         temperature_2m_min: data.temp - 3,
@@ -56,13 +54,11 @@ const Dashboard = () => {
       }),
     })
       .then((res) => res.json())
-      .then((res) => {
-        console.log("Recommendation:", res);
-        setRecommendationData(res);
-      });
+      .then((res) => setRecommendationData(res))
+      .catch((err) => console.error("RECOMMENDATION ERROR:", err));
   }, [data]);
 
-  // 🔍 GLOBAL SEARCH (controls everything)
+  // 🔍 SEARCH
   const handleSearch = async () => {
     if (!search) return;
 
@@ -82,7 +78,7 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
 
-      {/* 🔍 SEARCH BAR */}
+      {/* SEARCH */}
       <div className="search-bar">
         <input
           placeholder="Search city..."
@@ -99,7 +95,6 @@ const Dashboard = () => {
         <div className="left-section">
 
           <div className="cards-grid">
-
             <div className="card">
               <h3>🌡 Temperature</h3>
               <p>{data ? `${data.temp}°C` : "Loading..."}</p>
@@ -119,7 +114,6 @@ const Dashboard = () => {
               <h3>☁️ Weather</h3>
               <p>{data ? data.risk : "Loading..."}</p>
             </div>
-
           </div>
 
           <ClimateTrend
@@ -127,30 +121,26 @@ const Dashboard = () => {
             lon={selectedLocation?.lon}
           />
 
-          {/* 💡 RECOMMENDATIONS */}
+          {/* RECOMMENDATIONS */}
           <div className="recommendation-card">
             <h3>💡 Recommendations</h3>
 
             {recommendationData ? (
               <>
-                <p className="risk">
+                <p className="risk-text">
                   🔥 Risk: {recommendationData.heat_risk}
                 </p>
 
                 <div className="rec-section">
                   <h4>👤 Human</h4>
-                  {Object.values(
-                    recommendationData.human_recommendations
-                  ).map((val, i) => (
+                  {Object.values(recommendationData.human || {}).map((val, i) => (
                     <div key={i} className="rec-item">✅ {val}</div>
                   ))}
                 </div>
 
                 <div className="rec-section">
                   <h4>🌍 Environment</h4>
-                  {Object.values(
-                    recommendationData.environment_recommendations
-                  ).map((val, i) => (
+                  {Object.values(recommendationData.environment || {}).map((val, i) => (
                     <div key={i} className="rec-item">🌱 {val}</div>
                   ))}
                 </div>
@@ -171,7 +161,33 @@ const Dashboard = () => {
             />
           </div>
 
-          <div className="chatbot-box">
+          {/* CHATBOT BUTTON */}
+          <div
+            className="chatbot-trigger"
+            onClick={() => setShowChatbot(true)}
+          >
+            🤖 Open AI Assistant
+          </div>
+
+        </div>
+      </div>
+
+      {/* 🔥 MODERN POPUP */}
+      {showChatbot && (
+        <div className="popup-overlay">
+
+          {/* CLOSE OUTSIDE */}
+          <button
+            className="popup-close-btn"
+            onClick={() => setShowChatbot(false)}
+          >
+            ✕
+          </button>
+
+          <div
+            className="chatbot-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <UHIChatbot
               lat={selectedLocation?.lat}
               lon={selectedLocation?.lon}
@@ -179,8 +195,8 @@ const Dashboard = () => {
           </div>
 
         </div>
+      )}
 
-      </div>
     </div>
   );
 };
